@@ -37,8 +37,8 @@ export class ExerciseService {
     return exercise.save();
   }
 
-  async getExercisesByExam(examId: string): Promise<Exercise[]> {
-    return this.exerciseModel.find({ exam: examId }).exec();
+  async getExercisesByExam(examId: string) {
+    return this.exerciseModel.find({ examId }).exec(); // Ensure it filters by examId
   }
 
   async addOptionToExercise(exerciseId: string, description: string, isCorrect: boolean) {

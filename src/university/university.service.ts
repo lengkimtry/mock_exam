@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { University } from './schemas/university.schema';
+import { CreateUniversityDto } from './dto/create-university.dto';
 
 @Injectable()
 export class UniversityService {
@@ -11,8 +12,8 @@ export class UniversityService {
     private universityModel: Model<University>,
   ) {}
 
-  async createUniversity(name: string, description: string): Promise<University> {
-    const created = new this.universityModel({ name, description });
+  async createUniversity(createUniversityDto: CreateUniversityDto): Promise<University> {
+    const created = new this.universityModel(createUniversityDto);
     return created.save();
   }
 
