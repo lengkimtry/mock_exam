@@ -55,6 +55,7 @@ export class AuthController {
   @Get('/google/callback')
   @UseGuards(GoogleOAuthGuard)
   async googleAuthRedirect(@Request() req, @Response() res) {
+    try {
     const user = req.user;
     const googleDto = new GoogleDto();
     googleDto.email = user.email;
@@ -67,6 +68,10 @@ export class AuthController {
 
       res.redirect(`${process.env.FRONTEND_URL}/auth/social?token=${response.access_token}&refreshToken=${response.refresh_token}&user=${JSON.stringify(response.user)}`);
     });
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'Google sign-in failed' });
+  }
   }
   @Get("/facebook")
   @UseGuards(FacebookOAuthGuard)
