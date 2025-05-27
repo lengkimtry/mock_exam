@@ -1,5 +1,5 @@
 # Use official Node.js image
-FROM node:16
+FROM node:18
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -11,11 +11,8 @@ RUN npm install
 # Copy the rest of your application files
 COPY . .
 
-# Build the Nest.js app
-RUN npm run build
-
 # Expose the application port
-EXPOSE 3000
+EXPOSE 4000
 
 # Start the app
-CMD ["npm", "run", "start:prod"]
+CMD ["npm", "run", "start"]

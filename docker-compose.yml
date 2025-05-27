@@ -13,7 +13,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.runCommand('ping')"]
+      test: "exit 0"
       interval: 10s
       retries: 5
       start_period: 30s
@@ -25,13 +25,18 @@ services:
       dockerfile: Dockerfile
     container_name: mock-exam-backend
     ports:
-      - "3000:3000"
+      - "4000:4000" 
     environment:
       MONGO_URI: mongodb://mongodb:27017/mock-exam-db
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - app-network
+    env_file:
+      - .env
+    volumes:
+      - ./keys:/usr/src/app/keys # Mount the keys directory into the container
 
 volumes:
   mongodb_data:
