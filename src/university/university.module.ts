@@ -8,10 +8,13 @@ import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: University.name, schema: UniversitySchema }]),
+    MongooseModule.forFeature([
+      { name: University.name, schema: UniversitySchema },
+    ]),
     CloudinaryModule,
   ],
   controllers: [UniversityController],
   providers: [UniversityService, FileUploadService],
+  exports: [FileUploadService],
 })
 export class UniversityModule {}

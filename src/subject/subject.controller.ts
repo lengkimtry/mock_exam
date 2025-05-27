@@ -1,20 +1,58 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+} from '@nestjs/common';
+import { UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SubjectService } from './subject.service';
 import { Types } from 'mongoose';
+import { FileUploadService } from 'src/university/file-upload.service';
 
-@Controller('/subject')// Ensure the route prefix is correct
+@Controller('/subject') // Ensure the route prefix is correct
 export class SubjectController {
-  constructor(private readonly subjectService: SubjectService) {}
+  constructor(
+    private readonly subjectService: SubjectService,
+    private readonly fileUploadService: FileUploadService, // Injecting the fileUploadService
+  ) {}
 
   @Post()
-  async createSubject(@Body() body: { name: string; universityId: string }) {
-    console.log('Received POST request:', body); // Debug log
-    try {
-      return this.subjectService.createSubject(body.name, body.universityId);
-    } catch (error) {
-      console.error('Error creating subject:', error.message);
-      throw error;
+  @UseInterceptors(FileInterceptor('file')) // file field from FormData
+  async createSubject(
+    @UploadedFile() file: Express.Multer.File,
+    @Body()
+    body: {
+      name: string;
+      universityId: string;
+      questionCount: number;
+      duration: number;
+    }, // Define a proper type for body
+  ) {
+    // Manually parse fields from the body
+    const { name, universityId, questionCount, duration } = body; // Safely destructure with a defined type
+
+    if (!name || !universityId || questionCount == null || duration == null) {
+      throw new Error(
+        'Missing required fields: name, universityId, questionCount, or duration.',
+      );
     }
+
+    let imageSRC: string | undefined = undefined;
+    if (file) {
+      imageSRC = await this.fileUploadService.uploadFile(file); // <- Use `uploadFile`
+    }
+
+    return this.subjectService.createSubject({
+      name,
+      universityId,
+      questionCount: Number(questionCount),
+      duration: Number(duration),
+      imageSRC,
+    });
   }
 
   @Get()
@@ -33,10 +71,15 @@ export class SubjectController {
   }
 
   @Put(':id')
-  async updateSubject(@Param('id') id: string, @Body() updateData: Partial<{ name: string; universityId: string }>) {
+  async updateSubject(
+    @Param('id') id: string,
+    @Body() updateData: Partial<{ name: string; universityId: string }>,
+  ) {
     const transformedData = {
       ...updateData,
-      universityId: updateData.universityId ? new Types.ObjectId(updateData.universityId) : undefined,
+      universityId: updateData.universityId
+        ? new Types.ObjectId(updateData.universityId)
+        : undefined,
     };
     return this.subjectService.updateSubject(id, transformedData);
   }
@@ -48,13 +91,18 @@ export class SubjectController {
 
   @Get('topic')
   async findTopicBySubjectAndUniversity(
-    @Body() body: { universityId: string; subjectName: string; topicName: string }
+    @Body()
+    body: {
+      universityId: string;
+      subjectName: string;
+      topicName: string;
+    },
   ) {
     console.log('Finding topic with:', body);
     return this.subjectService.findTopicBySubjectAndUniversity(
       body.universityId,
       body.subjectName,
-      body.topicName
+      body.topicName,
     );
   }
 }

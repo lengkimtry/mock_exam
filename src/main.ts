@@ -1,26 +1,52 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { join } from 'path';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api'); // Ensure the global prefix is set to 'api'
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true, // Enable transformation
+    }),
+  ); // Enable validation globally
 
-  // Enable CORS
+  const configService = app.get(ConfigService);
+  const frontendUrl =
+    configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
   app.enableCors({
-    origin: 'http://localhost:3000', // Allow requests from your frontend
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Allow cookies if needed
+    origin: frontendUrl, // Explicitly allow the frontend's origin
+    credentials: true, // Allow credentials (cookies, authorization headers)
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+    ],
   });
 
-  // Serve static files from the uploads directory
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads', // Files will be accessible at /uploads/<filename>
-  });
-  app.enableCors();
+  // Swagger setup
+  const config = new DocumentBuilder()
+    .setTitle('MES API Documentation')
+    .setDescription('API information')
+    .setVersion('1.0')
+    .addTag('money')
+    .build();
 
-  await app.listen(process.env.PORT ?? 3000);
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/doc', app, document);
+
+  app.setGlobalPrefix('api');
+
+  const port = configService.get<number>('PORT') || 4000;
+
+  await app.listen(port);
+  console.log(`🚀 Backend running at: http://localhost:${port}`);
+  console.log(`🌐 CORS allowed for: ${frontendUrl}`);
 }
+
 bootstrap();

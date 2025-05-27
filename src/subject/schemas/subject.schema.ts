@@ -1,17 +1,28 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Subject extends Document {
-  @Prop({ required: true }) // Remove the unique constraint from the name field
+  @Prop({ required: true })
   name: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'University', required: true }) // Ensure universityId is required
+  @Prop({ type: Types.ObjectId, ref: 'University', required: true })
   universityId: Types.ObjectId;
+
+  @Prop({ required: true })
+  questionCount: number;
+
+  @Prop({ required: true }) // e.g., 1, 1.5, 2
+  duration: number;
+
+  @Prop()
+  image?: string; // Add image field to store image URL/path
+
+  @Prop()
+  imageSRC?: string; // Add imageSRC field to store Cloudinary URL
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);
 
-// Add a compound unique index for name and universityId
+// Make subject name + university unique
 SubjectSchema.index({ name: 1, universityId: 1 }, { unique: true });

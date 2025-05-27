@@ -9,8 +9,11 @@ export class University extends Document {
   @Prop({ required: true })
   title: string; // Changed from 'description' to 'title'
 
+
   @Prop({ required: true })
-  image: string; // New property to store the university image as a URL or base64 string
+  imageSrc: string;
+
+// New property to store the university image as a URL or base64 string
 
   @Prop({ required: true, default: 0 })
   numberOfSubjects: number; // New property to store the number of subjects

@@ -1,11 +1,19 @@
 // src/file-upload.service.ts
 import { Injectable, Inject } from '@nestjs/common';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import toStream = require('buffer-to-stream');
+import { Readable } from 'stream';
 
 @Injectable()
 export class FileUploadService {
+  [x: string]: any;
   constructor(@Inject('CLOUDINARY') private cloudinary) {}
+
+  private bufferToStream(buffer: Buffer): Readable {
+    const readable = new Readable();
+    readable.push(buffer);
+    readable.push(null);
+    return readable;
+  }
 
   async uploadFile(file: Express.Multer.File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -15,10 +23,11 @@ export class FileUploadService {
           if (error || !result) {
             return reject(error || new Error('Upload failed'));
           }
-          resolve(result.secure_url); // ✅ Always returns string
+          resolve(result.secure_url);
         },
       );
-      toStream(file.buffer).pipe(upload);
+
+      this.bufferToStream(file.buffer).pipe(upload);
     });
   }
 }

@@ -5,8 +5,13 @@ import { SubjectTopicService } from './subject-topic.service';
 import { SubjectTopicSchema } from './schemas/subject-topic.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: 'SubjectTopic', schema: SubjectTopicSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: 'SubjectTopic', schema: SubjectTopicSchema },
+    ]),
+  ],
   controllers: [SubjectTopicController],
   providers: [SubjectTopicService],
+  exports: [SubjectTopicService, MongooseModule],
 })
 export class SubjectTopicModule {}

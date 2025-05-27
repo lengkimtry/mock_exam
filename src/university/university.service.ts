@@ -12,7 +12,9 @@ export class UniversityService {
     private universityModel: Model<University>,
   ) {}
 
-  async createUniversity(createUniversityDto: CreateUniversityDto): Promise<University> {
+  async createUniversity(
+    createUniversityDto: CreateUniversityDto,
+  ): Promise<University> {
     const created = new this.universityModel(createUniversityDto);
     return created.save();
   }
@@ -29,8 +31,13 @@ export class UniversityService {
     return university;
   }
 
-  async updateUniversity(id: string, updateData: Partial<University>): Promise<University> {
-    const updatedUniversity = await this.universityModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async updateUniversity(
+    id: string,
+    updateData: Partial<University>,
+  ): Promise<University> {
+    const updatedUniversity = await this.universityModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
     if (!updatedUniversity) {
       throw new Error(`University with id ${id} not found`);
     }
@@ -38,7 +45,9 @@ export class UniversityService {
   }
 
   async deleteUniversity(id: string): Promise<University> {
-    const deletedUniversity = await this.universityModel.findByIdAndDelete(id).exec();
+    const deletedUniversity = await this.universityModel
+      .findByIdAndDelete(id)
+      .exec();
     if (!deletedUniversity) {
       throw new Error(`University with id ${id} not found`);
     }

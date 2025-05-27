@@ -12,7 +12,11 @@ export class ExamService {
     @InjectModel('Exercise') private readonly exerciseModel: Model<Exercise>, // Inject ExerciseModel
   ) {}
 
-  async createExam(name: string, subjectId: string, difficultyLevel: string): Promise<Exam> {
+  async createExam(
+    name: string,
+    subjectId: string,
+    difficultyLevel: string,
+  ): Promise<Exam> {
     // Check if an exam with the same name already exists
     const existingExam = await this.examModel.findOne({ name }).exec();
     if (existingExam) {
@@ -26,7 +30,11 @@ export class ExamService {
     const subjectObjectId = new Types.ObjectId(subjectId);
 
     // Create the exam
-    const exam = new this.examModel({ name, subject: subjectObjectId, difficultyLevel });
+    const exam = new this.examModel({
+      name,
+      subject: subjectObjectId,
+      difficultyLevel,
+    });
     return exam.save();
   }
 
@@ -42,8 +50,13 @@ export class ExamService {
     return this.exerciseModel.find({ exam: examId }).exec(); // Fetch exercises for the given exam
   }
 
-  async updateExam(id: string, updateData: Partial<Exam>): Promise<Exam | null> {
-    return this.examModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async updateExam(
+    id: string,
+    updateData: Partial<Exam>,
+  ): Promise<Exam | null> {
+    return this.examModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async deleteExam(id: string): Promise<Exam | null> {
@@ -52,7 +65,10 @@ export class ExamService {
 
   async getExamsByYear(subjectId: string): Promise<Exam[]> {
     // Example: Fetch exams for the subject and sort by year (assuming a "year" field exists)
-    return this.examModel.find({ subject: subjectId }).sort({ year: -1 }).exec();
+    return this.examModel
+      .find({ subject: subjectId })
+      .sort({ year: -1 })
+      .exec();
   }
 
   async getExamsBySubject(subjectId: string): Promise<Exam[]> {
@@ -67,7 +83,10 @@ export class ExamService {
     ]);
   }
 
-  async getRandomExercisesByUniversityAndSubject(universityId: string, subjectId: string): Promise<Exercise[]> {
+  async getRandomExercisesByUniversityAndSubject(
+    universityId: string,
+    subjectId: string,
+  ): Promise<Exercise[]> {
     // Fetch random exercises for the given university and subject
     return this.exerciseModel.aggregate([
       { $match: { university: universityId, subject: subjectId } }, // Match university and subject

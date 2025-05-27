@@ -5,10 +5,21 @@ import { ExerciseOption } from './schemas/exercise-option.schema';
 
 @Injectable()
 export class ExerciseOptionService {
-  constructor(@InjectModel('ExerciseOption') private readonly exerciseOptionModel: Model<ExerciseOption>) {}
+  constructor(
+    @InjectModel('ExerciseOption')
+    private readonly exerciseOptionModel: Model<ExerciseOption>,
+  ) {}
 
-  async createOption(exerciseId: string, description: string, isCorrect: boolean): Promise<ExerciseOption> {
-    const option = new this.exerciseOptionModel({ exercise: exerciseId, description, isCorrect });
+  async createOption(
+    exerciseId: string,
+    description: string,
+    isCorrect: boolean,
+  ): Promise<ExerciseOption> {
+    const option = new this.exerciseOptionModel({
+      exercise: exerciseId,
+      description,
+      isCorrect,
+    });
     return option.save();
   }
 

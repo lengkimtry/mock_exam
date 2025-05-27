@@ -6,8 +6,19 @@ export class ExerciseOptionController {
   constructor(private readonly exerciseOptionService: ExerciseOptionService) {}
 
   @Post()
-  async createOption(@Body() body: { exerciseId: string; description: string; isCorrect: boolean }) {
-    return this.exerciseOptionService.createOption(body.exerciseId, body.description, body.isCorrect);
+  async createOption(
+    @Body()
+    body: {
+      exerciseId: string;
+      description: string;
+      isCorrect: boolean;
+    },
+  ) {
+    return this.exerciseOptionService.createOption(
+      body.exerciseId,
+      body.description,
+      body.isCorrect,
+    );
   }
 
   @Get(':exerciseId')
