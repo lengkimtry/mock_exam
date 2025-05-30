@@ -1,26 +1,37 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { Exam } from '../../exam/schemas/exam.schema';
+
+// Define the option schema as a subdocument
+@Schema({ _id: false })
+export class ExerciseOption {
+  @Prop({ required: true })
+  description: string;
+
+  @Prop({ required: true, default: false })
+  isCorrect: boolean;
+}
+
+const ExerciseOptionSchema = SchemaFactory.createForClass(ExerciseOption);
 
 @Schema({ timestamps: true })
 export class Exercise extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'University', required: true }) // Ensure university is required
+  @Prop({ type: Types.ObjectId, ref: 'University', required: true })
   university: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Subject', required: true }) // Ensure subject is required
+  @Prop({ type: Types.ObjectId, ref: 'Subject', required: true })
   subject: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'Exam', required: false }) // Make exam optional
-  exam?: Types.ObjectId;
 
   @Prop({ required: true })
   description: string;
 
-  @Prop({ required: true })
+  @Prop()
   formula: string;
 
-  @Prop({ type: String, enum: ['Hard', 'Medium', 'Easy'], required: true })
+  @Prop({ enum: ['Easy', 'Medium', 'Hard'], default: 'Medium' })
   difficultyLevel: string;
+
+  @Prop({ type: [ExerciseOptionSchema], default: [] })
+  options: ExerciseOption[];
 }
 
 export const ExerciseSchema = SchemaFactory.createForClass(Exercise);

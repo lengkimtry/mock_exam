@@ -1,19 +1,30 @@
-
-
-import { Injectable } from "@nestjs/common";
-import { PassportStrategy } from "@nestjs/passport";
-import { Strategy, Profile } from "passport-facebook";
-import { VerifyCallback } from "passport-google-oauth20";
+import { PassportStrategy } from '@nestjs/passport';
+import { Strategy, Profile } from 'passport-facebook';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class FacebookStrategy extends PassportStrategy(Strategy, "facebook") {
-  constructor() {
+export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
+  constructor(private configService: ConfigService) {
+    const clientID = configService.get<string>('FACEBOOK_APP_ID');
+    const clientSecret = configService.get<string>('FACEBOOK_APP_SECRET');
+    const callbackURL = configService.get<string>('FACEBOOK_CALLBACK_URL');
+
+    console.log('🔑 Facebook OAuth Configuration Check:');
+    console.log('APP_ID:', clientID ? `${clientID.substring(0, 10)}...` : 'NOT SET');
+    console.log('APP_SECRET:', clientSecret ? `${clientSecret.substring(0, 10)}...` : 'NOT SET');
+    console.log('CALLBACK_URL:', callbackURL || 'NOT SET');
+
+    if (!clientID || !clientSecret) {
+      throw new Error('Facebook OAuth credentials not configured in environment variables');
+    }
+
     super({
-      clientID: process.env.FACEBOOK_APP_ID || '',
-      clientSecret: process.env.FACEBOOK_APP_SECRET || '',
-      callbackURL: process.env.FACEBOOK_REDIRECT_URL || '',
-      scope: "email",
-      profileFields: ["emails", "name"],
+      clientID,
+      clientSecret,
+      callbackURL,
+      scope: ['email'],
+      profileFields: ['emails', 'name', 'picture'],
     });
   }
 
@@ -21,27 +32,28 @@ export class FacebookStrategy extends PassportStrategy(Strategy, "facebook") {
     accessToken: string,
     refreshToken: string,
     profile: Profile,
-    done: VerifyCallback
+    done: Function,
   ): Promise<any> {
     try {
-      const { id, name, emails } = profile;
+      const { name, emails, photos } = profile;
+      if (!emails || !emails.length) {
+        return done(new Error('No email found in Facebook profile'), null);
+      }
+
       const user = {
-        id: id,
-        email: emails ? emails[0].value : null,
-        username: emails ? emails[0].value : null,
-        firstName: name ? name.givenName : null,
-        lastName: name ? name.familyName : null,
+        email: emails[0].value,
+        firstName: name?.givenName || '',
+        lastName: name?.familyName || '',
+        username: emails[0].value,
+        picture: photos?.[0]?.value || '',
+        facebookId: profile.id,
         accessToken,
         refreshToken,
       };
 
-      if (!user.email) {
-        throw new Error('Email not found in Facebook profile');
-      }
-
       done(null, user);
     } catch (error) {
-      done(error, false);
+      done(error, null);
     }
   }
 }
