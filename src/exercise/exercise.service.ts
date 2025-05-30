@@ -12,36 +12,50 @@ export class ExerciseService {
     private readonly exerciseOptionService: ExerciseOptionService, // Inject ExerciseOptionService
   ) {}
 
-  async createExercise(
-    universityId: string,
-    subjectId: string,
-    examId: string | undefined,
-    description: string,
-    formula: string,
-    difficultyLevel: string,
-  ): Promise<Exercise> {
-    console.log('Creating exercise with:', {
-      universityId,
-      subjectId,
-      examId,
-      description,
-      formula,
-      difficultyLevel,
-    });
+  async createExercise(createExerciseDto: any): Promise<Exercise> {
+    try {
+      console.log('Creating exercise with data:', JSON.stringify(createExerciseDto, null, 2));
 
-    const universityObjectId = new Types.ObjectId(universityId);
-    const subjectObjectId = new Types.ObjectId(subjectId);
+      // Validate that options are provided
+      if (!createExerciseDto.options || !Array.isArray(createExerciseDto.options) || createExerciseDto.options.length === 0) {
+        throw new Error('Exercise must have at least one option');
+      }
 
-    const exercise = new this.exerciseModel({
-      university: universityObjectId,
-      subject: subjectObjectId,
-      exam: examId ? new Types.ObjectId(examId) : undefined,
-      description,
-      formula,
-      difficultyLevel,
-    });
+      // Validate that at least one option is correct
+      const hasCorrectAnswer = createExerciseDto.options.some(option => option.isCorrect === true);
+      if (!hasCorrectAnswer) {
+        throw new Error('Exercise must have at least one correct answer');
+      }
 
-    return exercise.save();
+      // Handle both field name formats: university/subject OR universityId/subjectId
+      const universityId = createExerciseDto.university || createExerciseDto.universityId;
+      const subjectId = createExerciseDto.subject || createExerciseDto.subjectId;
+
+      if (!universityId || !subjectId) {
+        throw new Error('University and subject are required');
+      }
+
+      // Convert to ObjectIds
+      const exerciseData = {
+        description: createExerciseDto.description,
+        formula: createExerciseDto.formula,
+        difficultyLevel: createExerciseDto.difficultyLevel,
+        university: new Types.ObjectId(universityId),
+        subject: new Types.ObjectId(subjectId),
+        options: createExerciseDto.options,
+      };
+
+      console.log('Exercise data to save:', JSON.stringify(exerciseData, null, 2));
+
+      const exercise = new this.exerciseModel(exerciseData);
+      const savedExercise = await exercise.save();
+      
+      console.log('Exercise saved successfully with options:', savedExercise.options?.length || 0);
+      return savedExercise;
+    } catch (error) {
+      console.error('Error creating exercise:', error);
+      throw new Error(`Failed to create exercise: ${error.message}`);
+    }
   }
 
   async getExercisesByExam(examId: string) {
@@ -66,163 +80,37 @@ export class ExerciseService {
     subjectId: string,
     limit: number = 10,
   ): Promise<Exercise[]> {
-    console.log(
-      '=== BACKEND getRandomExercisesByUniversityAndSubject DEBUG START ===',
-    );
-    console.log('Fetching random exercises for:', {
-      universityId,
-      subjectId,
-      limit,
-    });
-
     try {
-      // Validate ObjectIds
-      if (!Types.ObjectId.isValid(universityId)) {
-        throw new Error(`Invalid universityId: ${universityId}`);
-      }
-      if (!Types.ObjectId.isValid(subjectId)) {
-        throw new Error(`Invalid subjectId: ${subjectId}`);
-      }
-
+      console.log(`Searching for exercises with universityId: ${universityId}, subjectId: ${subjectId}`);
+      
+      // Convert string IDs to ObjectIds for proper matching
       const universityObjectId = new Types.ObjectId(universityId);
       const subjectObjectId = new Types.ObjectId(subjectId);
 
-      // First check if we have any exercises for this specific subject
-      const totalExercisesForSubject = await this.exerciseModel.countDocuments({
-        university: universityObjectId,
-        subject: subjectObjectId,
-      });
-
-      console.log(`Total exercises found for subject ${subjectId}: ${totalExercisesForSubject}`);
-
-      if (totalExercisesForSubject === 0) {
-        console.error('No exercises found for this specific subject');
-        
-        // Debug: Check what subjects have exercises for this university
-        const exercisesGroupedBySubject = await this.exerciseModel.aggregate([
-          { $match: { university: universityObjectId } },
-          { $group: { _id: '$subject', count: { $sum: 1 } } },
-        ]);
-        console.log('Exercises grouped by subject for this university:', exercisesGroupedBySubject);
-        
-        throw new Error(`No exercises found for subject ${subjectId} in university ${universityId}`);
-      }
-
-      // Check exercise options for this subject
-      const optionsCollection = this.exerciseModel.db.collection('exerciseoptions');
-      
-      // Find exercises for this subject that have options
-      const exercisesWithOptionsCount = await this.exerciseModel.aggregate([
-        {
-          $match: {
-            university: universityObjectId,
-            subject: subjectObjectId,
-          },
-        },
-        {
-          $lookup: {
-            from: 'exerciseoptions',
-            localField: '_id',
-            foreignField: 'exercise',
-            as: 'options',
-          },
-        },
-        {
-          $match: {
-            'options.0': { $exists: true },
-          },
-        },
-        { $count: 'total' },
-      ]);
-
-      const exercisesWithOptions = exercisesWithOptionsCount[0]?.total || 0;
-      console.log(`Exercises with options for subject ${subjectId}: ${exercisesWithOptions}`);
-
-      if (exercisesWithOptions === 0) {
-        console.warn('No exercises with options found for this subject');
-        
-        // Debug: Show sample exercises for this subject
-        const sampleExercises = await this.exerciseModel.find({
-          university: universityObjectId,
-          subject: subjectObjectId,
-        }).limit(3);
-        console.log('Sample exercises for this subject:', JSON.stringify(sampleExercises, null, 2));
-        
-        // Check if these exercises have options
-        for (const exercise of sampleExercises) {
-          const options = await optionsCollection.find({ exercise: exercise._id }).toArray();
-          console.log(`Options for exercise ${exercise._id}:`, options);
-        }
-      }
-
-      // Main aggregation query - ensure we only get exercises for the specific subject
+      // Use MongoDB aggregation for proper randomization
       const exercises = await this.exerciseModel.aggregate([
-        {
-          $match: {
-            university: universityObjectId,
-            subject: subjectObjectId, // This ensures we only get exercises for this specific subject
-          },
+        { 
+          $match: { 
+            university: universityObjectId, 
+            subject: subjectObjectId 
+          } 
         },
-        {
-          $lookup: {
-            from: 'exerciseoptions',
-            localField: '_id',
-            foreignField: 'exercise',
-            as: 'options',
-          },
-        },
-        {
-          $match: {
-            'options.0': { $exists: true }, // Only exercises with options
-          },
-        },
-        { $sample: { size: limit } }, // Random selection
+        { $sample: { size: limit } }, // MongoDB's built-in random sampling
       ]);
 
-      console.log('=== FINAL AGGREGATION RESULT ===');
-      console.log('Found exercises with options:', exercises.length);
+      console.log(`Found ${exercises.length} random exercises`);
       
-      // Verify each exercise belongs to the correct subject
+      // Log each exercise's options to debug
       exercises.forEach((exercise, index) => {
-        console.log(`Exercise ${index + 1}:`);
-        console.log(`  - ID: ${exercise._id}`);
-        console.log(`  - Subject: ${exercise.subject} (should match ${subjectObjectId})`);
-        console.log(`  - University: ${exercise.university} (should match ${universityObjectId})`);
-        console.log(`  - Options count: ${exercise.options?.length || 0}`);
-        console.log(`  - Subject matches: ${exercise.subject.toString() === subjectObjectId.toString()}`);
+        console.log(`Exercise ${index + 1}: ${exercise._id}`);
+        console.log(`  Description: ${exercise.description}`);
+        console.log(`  Options count: ${exercise.options?.length || 0}`);
       });
 
-      if (exercises.length === 0) {
-        console.warn('No exercises with options found after aggregation, creating subject-specific mock data');
-        
-        // Return subject-specific mock data as fallback
-        const mockExercises = Array.from({ length: Math.min(limit, 5) }, (_, index) => ({
-          _id: `mock_${subjectId}_${index + 1}`,
-          description: `Mock Question ${index + 1} for Subject ${subjectId}: Sample math problem for this specific subject`,
-          university: universityObjectId,
-          subject: subjectObjectId,
-          formula: `x + y = ${index + 1}`,
-          difficultyLevel: 'easy',
-          options: [
-            { _id: `opt_a_${subjectId}_${index}`, description: `Option A for subject ${subjectId} question ${index + 1}`, isCorrect: false },
-            { _id: `opt_b_${subjectId}_${index}`, description: `Option B for subject ${subjectId} question ${index + 1}`, isCorrect: true },
-            { _id: `opt_c_${subjectId}_${index}`, description: `Option C for subject ${subjectId} question ${index + 1}`, isCorrect: false },
-            { _id: `opt_d_${subjectId}_${index}`, description: `Option D for subject ${subjectId} question ${index + 1}`, isCorrect: false },
-          ],
-        }));
-        
-        console.log('=== RETURNING SUBJECT-SPECIFIC MOCK DATA ===');
-        console.log('Mock exercises with subject ID:', JSON.stringify(mockExercises, null, 2));
-        return mockExercises as unknown as Exercise[];
-      }
-
-      console.log('=== BACKEND DEBUG END ===');
       return exercises;
     } catch (error) {
-      console.error('=== BACKEND ERROR ===');
-      console.error('Error fetching exercises:', error);
-      console.error('Error stack:', error.stack);
-      throw new Error(`Failed to fetch exercises for subject ${subjectId}: ${error.message}`);
+      console.error('Error fetching random exercises:', error);
+      throw new Error('Failed to fetch exercises');
     }
   }
 
@@ -247,22 +135,140 @@ export class ExerciseService {
     }
   }
 
-  async getExercisesBySubject(subjectId: string): Promise<Exercise[]> {
+  async getExercisesBySubject(subjectId: string, limit: number = 10): Promise<Exercise[]> {
     try {
-      return await this.exerciseModel.aggregate([
-        { $match: { subject: new Types.ObjectId(subjectId) } },
-        {
-          $lookup: {
-            from: 'exerciseoptions',
-            localField: '_id',
-            foreignField: 'exercise',
-            as: 'options',
-          },
-        },
+      const subjectObjectId = new Types.ObjectId(subjectId);
+      
+      // Use aggregation for random sampling by subject only
+      const exercises = await this.exerciseModel.aggregate([
+        { $match: { subject: subjectObjectId } },
+        { $sample: { size: limit } },
       ]);
+      
+      console.log(`Found ${exercises.length} random exercises for subject ${subjectId}`);
+      return exercises;
     } catch (error) {
       console.error('Error fetching exercises by subject:', error);
-      throw new Error('Failed to fetch exercises by subject.');
+      throw new Error('Failed to fetch exercises by subject');
+    }
+  }
+
+  // Add a new method for shuffling exercise options
+  async getRandomizedExercises(
+    universityId: string,
+    subjectId: string,
+    limit: number = 10,
+  ): Promise<Exercise[]> {
+    try {
+      // Get random exercises
+      const exercises = await this.getRandomExercisesByUniversityAndSubject(
+        universityId,
+        subjectId,
+        limit,
+      );
+
+      // Shuffle the options within each exercise for additional randomization
+      const randomizedExercises = exercises.map(exercise => {
+        if (exercise.options && exercise.options.length > 0) {
+          // Shuffle the options array
+          const shuffledOptions = [...exercise.options].sort(() => Math.random() - 0.5);
+          return {
+            ...exercise,
+            options: shuffledOptions,
+          };
+        }
+        return exercise;
+      });
+
+      console.log('Exercises with shuffled options prepared');
+      return randomizedExercises as Exercise[];
+    } catch (error) {
+      console.error('Error randomizing exercises:', error);
+      throw new Error('Failed to randomize exercises');
+    }
+  }
+
+  async getAllExercises(): Promise<Exercise[]> {
+    try {
+      const exercises = await this.exerciseModel
+        .find()
+        .populate('university', 'name')
+        .populate('subject', 'name')
+        .sort({ createdAt: -1 }) // Sort by newest first
+        .exec();
+      
+      console.log(`Found ${exercises.length} exercises in database`);
+      return exercises;
+    } catch (error) {
+      console.error('Error fetching all exercises:', error);
+      throw new Error('Failed to fetch exercises');
+    }
+  }
+
+  async getExerciseById(id: string): Promise<Exercise | null> {
+    try {
+      const exercise = await this.exerciseModel
+        .findById(id)
+        .populate('university', 'name')
+        .populate('subject', 'name')
+        .exec();
+      
+      if (exercise) {
+        console.log(`Found exercise: ${exercise.description}`);
+      } else {
+        console.log(`Exercise with ID ${id} not found`);
+      }
+      
+      return exercise;
+    } catch (error) {
+      console.error('Error fetching exercise by ID:', error);
+      throw new Error('Failed to fetch exercise');
+    }
+  }
+
+  async updateExercise(id: string, updateData: any): Promise<Exercise | null> {
+    try {
+      // Handle field name conversion if needed
+      if (updateData.universityId && !updateData.university) {
+        updateData.university = updateData.universityId;
+        delete updateData.universityId;
+      }
+      if (updateData.subjectId && !updateData.subject) {
+        updateData.subject = updateData.subjectId;
+        delete updateData.subjectId;
+      }
+
+      const exercise = await this.exerciseModel
+        .findByIdAndUpdate(id, updateData, { new: true })
+        .populate('university', 'name')
+        .populate('subject', 'name')
+        .exec();
+      
+      if (exercise) {
+        console.log(`Updated exercise: ${exercise.description}`);
+      }
+      
+      return exercise;
+    } catch (error) {
+      console.error('Error updating exercise:', error);
+      throw new Error('Failed to update exercise');
+    }
+  }
+
+  async deleteExercise(id: string): Promise<Exercise | null> {
+    try {
+      const exercise = await this.exerciseModel
+        .findByIdAndDelete(id)
+        .exec();
+      
+      if (exercise) {
+        console.log(`Deleted exercise: ${exercise.description}`);
+      }
+      
+      return exercise;
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
+      throw new Error('Failed to delete exercise');
     }
   }
 }

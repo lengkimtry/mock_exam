@@ -3,20 +3,20 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class University extends Document {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
-  title: string; // Changed from 'description' to 'title'
+  @Prop()
+  title: string;
 
+  @Prop()
+  image: string;
 
-  @Prop({ required: true })
-  imageSrc: string;
+  @Prop({ default: 0 })
+  numberOfSubjects: number;
 
-// New property to store the university image as a URL or base64 string
-
-  @Prop({ required: true, default: 0 })
-  numberOfSubjects: number; // New property to store the number of subjects
+  @Prop({ required: false })
+  imageSrc?: string;
 }
 
 export const UniversitySchema = SchemaFactory.createForClass(University);

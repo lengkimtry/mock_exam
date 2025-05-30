@@ -1,43 +1,129 @@
-import { Controller, Post, Get, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import { ExerciseService } from './exercise.service';
 
 @Controller('exercise')
 export class ExerciseController {
   constructor(private readonly exerciseService: ExerciseService) {}
 
-  @Post()
-  async createExercise(
-    @Body()
-    body: {
-      universityId: string;
-      subjectId: string;
-      examId?: string;
-      description: string;
-      formula: string;
-      difficultyLevel: string;
-      options: { description: string; isCorrect: boolean }[];
-    },
-  ) {
-    // Pass universityId and subjectId to the service
-    const exercise = await this.exerciseService.createExercise(
-      body.universityId,
-      body.subjectId,
-      body.examId,
-      body.description,
-      body.formula,
-      body.difficultyLevel,
-    );
+  // GET all exercises
+  @Get()
+  async getAllExercises() {
+    console.log('=== Fetching All Exercises ===');
+    try {
+      const exercises = await this.exerciseService.getAllExercises();
+      console.log(`Found ${exercises.length} exercises`);
+      return exercises;
+    } catch (error) {
+      console.error('Error fetching all exercises:', error);
+      throw error;
+    }
+  }
 
-    // Add options to the exercise
-    for (const option of body.options) {
-      await this.exerciseService.addOptionToExercise(
-        exercise.id,
-        option.description,
-        option.isCorrect,
+  // GET exercise by ID
+  @Get(':id')
+  async getExerciseById(@Param('id') id: string) {
+    console.log(`=== Fetching Exercise by ID: ${id} ===`);
+    try {
+      const exercise = await this.exerciseService.getExerciseById(id);
+      if (!exercise) {
+        throw new BadRequestException('Exercise not found');
+      }
+      return exercise;
+    } catch (error) {
+      console.error('Error fetching exercise by ID:', error);
+      throw error;
+    }
+  }
+
+  // POST create new exercise
+  @Post()
+  async createExercise(@Body() createExerciseDto: any) {
+    console.log('=== Creating Exercise ===');
+    console.log('Request body:', JSON.stringify(createExerciseDto, null, 2));
+
+    // Handle both field name formats
+    const universityId =
+      createExerciseDto.university || createExerciseDto.universityId;
+    const subjectId = createExerciseDto.subject || createExerciseDto.subjectId;
+
+    // Validate required fields
+    if (!universityId || !subjectId) {
+      throw new BadRequestException(
+        'university/universityId and subject/subjectId are required',
       );
     }
 
-    return exercise;
+    if (!createExerciseDto.description) {
+      throw new BadRequestException('description is required');
+    }
+
+    if (
+      !createExerciseDto.options ||
+      !Array.isArray(createExerciseDto.options)
+    ) {
+      throw new BadRequestException('options array is required');
+    }
+
+    if (createExerciseDto.options.length === 0) {
+      throw new BadRequestException('At least one option is required');
+    }
+
+    try {
+      const exercise =
+        await this.exerciseService.createExercise(createExerciseDto);
+      console.log('=== Exercise Created Successfully ===');
+      console.log(
+        `Created exercise with ${exercise.options?.length || 0} options`,
+      );
+      return exercise;
+    } catch (error) {
+      console.error('Error in exercise controller:', error);
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  // PUT update exercise
+  @Put(':id')
+  async updateExercise(@Param('id') id: string, @Body() updateData: any) {
+    console.log(`=== Updating Exercise: ${id} ===`);
+    try {
+      const exercise = await this.exerciseService.updateExercise(id, updateData);
+      if (!exercise) {
+        throw new BadRequestException('Exercise not found');
+      }
+      console.log('Exercise updated successfully');
+      return exercise;
+    } catch (error) {
+      console.error('Error updating exercise:', error);
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  // DELETE exercise
+  @Delete(':id')
+  async deleteExercise(@Param('id') id: string) {
+    console.log(`=== Deleting Exercise: ${id} ===`);
+    try {
+      const exercise = await this.exerciseService.deleteExercise(id);
+      if (!exercise) {
+        throw new BadRequestException('Exercise not found');
+      }
+      console.log('Exercise deleted successfully');
+      return { message: 'Exercise deleted successfully', exercise };
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
+      throw new BadRequestException(error.message);
+    }
   }
 
   @Get(':examId')
@@ -51,33 +137,28 @@ export class ExerciseController {
     @Param('subjectId') subjectId: string,
     @Query('limit') limit?: string,
   ) {
-    console.log('=== CONTROLLER: getRandomExercisesByUniversityAndSubject ===');
-    console.log('Request params:', { universityId, subjectId, limit });
-
-    // Validate parameters
-    if (!universityId || !subjectId) {
-      throw new Error('Both universityId and subjectId are required');
-    }
-
     const exerciseLimit = limit ? parseInt(limit) : 10;
 
-    if (isNaN(exerciseLimit) || exerciseLimit < 1 || exerciseLimit > 50) {
-      throw new Error('Limit must be a number between 1 and 50');
-    }
-
-    console.log('Validated params:', { universityId, subjectId, exerciseLimit });
+    console.log(`=== Fetching Random Exercises ===`);
+    console.log(
+      `University: ${universityId}, Subject: ${subjectId}, Limit: ${exerciseLimit}`,
+    );
+    console.log(`Request timestamp: ${new Date().toISOString()}`);
 
     try {
-      const result = await this.exerciseService.getRandomExercisesByUniversityAndSubject(
+      // Use the randomized method for better variety
+      const exercises = await this.exerciseService.getRandomizedExercises(
         universityId,
         subjectId,
         exerciseLimit,
       );
 
-      console.log(`=== CONTROLLER: Returning ${result.length} exercises ===`);
-      return result;
+      console.log(`=== API Response ===`);
+      console.log(`Returning ${exercises.length} randomized exercises`);
+
+      return exercises;
     } catch (error) {
-      console.error('=== CONTROLLER ERROR ===', error);
+      console.error('Error in controller:', error);
       throw error;
     }
   }
@@ -88,7 +169,25 @@ export class ExerciseController {
   }
 
   @Get('subject/:subjectId')
-  async getExercisesBySubject(@Param('subjectId') subjectId: string) {
-    return this.exerciseService.getExercisesBySubject(subjectId);
+  async getExercisesBySubject(
+    @Param('subjectId') subjectId: string,
+    @Query('limit') limit?: string,
+  ) {
+    const exerciseLimit = limit ? parseInt(limit) : 10;
+
+    console.log(`=== Fetching Exercises by Subject: ${subjectId} ===`);
+    console.log(`Limit: ${exerciseLimit}, Timestamp: ${new Date().toISOString()}`);
+
+    try {
+      const exercises = await this.exerciseService.getExercisesBySubject(
+        subjectId,
+        exerciseLimit,
+      );
+      console.log(`=== Returning ${exercises.length} exercises ===`);
+      return exercises;
+    } catch (error) {
+      console.error('Error fetching exercises by subject:', error);
+      throw error;
+    }
   }
 }
