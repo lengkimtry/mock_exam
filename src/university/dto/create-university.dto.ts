@@ -1,20 +1,28 @@
-import { IsNotEmpty, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  IsOptional,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateUniversityDto {
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   name: string;
 
-  @IsNotEmpty()
   @IsString()
-  title: string;
+  @IsOptional()
+  title?: string;
 
-  @IsNotEmpty() // Ensure the image field is required
   @IsString()
-  image: string;
+  @IsOptional()
+  image?: string;
 
-  @IsNotEmpty()
   @IsNumber()
   @Min(0)
-  numberOfSubjects: number;
+  @Type(() => Number)
+  @IsOptional()
+  numberOfSubjects?: number;
 }

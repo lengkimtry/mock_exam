@@ -15,8 +15,20 @@ export class UniversityService {
   async createUniversity(
     createUniversityDto: CreateUniversityDto,
   ): Promise<University> {
-    const created = new this.universityModel(createUniversityDto);
-    return created.save();
+    try {
+      const created = new this.universityModel({
+        ...createUniversityDto,
+        title: createUniversityDto.title || createUniversityDto.name,
+        numberOfSubjects: createUniversityDto.numberOfSubjects || 0,
+      });
+      return await created.save();
+    } catch (error) {
+      console.error('Error creating university:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to create university: ${error.message}`);
+      }
+      throw new Error('Failed to create university due to an unknown error');
+    }
   }
 
   async getAllUniversities(): Promise<University[]> {

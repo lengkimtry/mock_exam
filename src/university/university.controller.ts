@@ -8,6 +8,9 @@ import {
   Param,
   UploadedFile,
   UseInterceptors,
+  BadRequestException,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UniversityService } from './university.service';
@@ -23,23 +26,57 @@ export class UniversityController {
 
   @Post()
   @UseInterceptors(FileInterceptor('image'))
+  @UsePipes(
+    new ValidationPipe({ skipMissingProperties: true, transform: true }),
+  )
   async createUniversity(
-    @Body() body: CreateUniversityDto,
-    @UploadedFile() file: Express.Multer.File,
+    @Body() body: CreateUniversityDto, // Use DTO for type checking
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    let imageUrl = body.image;
-    if (file) {
-      imageUrl = await this.fileUploadService.uploadFile(file); // Now uploads to Cloudinary
-    }
+    try {
+      // Manual validation
+      if (
+        !body?.name ||
+        typeof body.name !== 'string' ||
+        body.name.trim() === ''
+      ) {
+        throw new BadRequestException(
+          'University name is required and must be a non-empty string',
+        );
+      }
 
-    if (!imageUrl) {
-      throw new Error('Image is required');
-    }
+      // Handle image upload
+      let imageUrl = body.image || ''; // Use image if provided
+      if (file) {
+        imageUrl = await this.fileUploadService.uploadFile(file);
+      }
 
-    return this.universityService.createUniversity({
-      ...body,
-      image: imageUrl,
-    });
+      // Parse and validate numberOfSubjects
+      let numberOfSubjects = 0;
+      if (body.numberOfSubjects !== undefined) {
+        numberOfSubjects = parseInt(body.numberOfSubjects.toString());
+        if (isNaN(numberOfSubjects) || numberOfSubjects < 0) {
+          throw new BadRequestException(
+            'numberOfSubjects must be a number greater than or equal to 0',
+          );
+        }
+      }
+
+      // Create properly typed DTO after manual validation
+      const createUniversityDto: CreateUniversityDto = {
+        name: body.name.trim(),
+        title: body.title?.trim() || body.name.trim(),
+        image: imageUrl || '/logo.png',
+        numberOfSubjects: numberOfSubjects,
+      };
+
+      return await this.universityService.createUniversity(createUniversityDto);
+    } catch (error) {
+      console.error('Error in createUniversity controller:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to create university';
+      throw new BadRequestException(errorMessage);
+    }
   }
 
   @Get()
