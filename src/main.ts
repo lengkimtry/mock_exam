@@ -3,8 +3,18 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
+import * as dotenv from 'dotenv';
+
+// Load environment variables early
+dotenv.config();
 
 async function bootstrap() {
+  // Debug environment variables
+  console.log('🔍 Environment Variables Check:');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET');
+  console.log('FACEBOOK_APP_ID:', process.env.FACEBOOK_APP_ID ? 'SET' : 'NOT SET');
+
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(
