@@ -1,0 +1,59 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env*
+.nyc_output
+coverage
+.cache
+.DS_Store
+.vscode
+.idea
+*.log
+logs
+*.tmp
+*.temp
+dist
+build
+
+# Test files
+test
+tests
+**/*.test.js
+**/*.spec.js
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+.jest
+
+# Documentation
+docs
+*.md
+!README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+Jenkinsfile
+
+# Docker files (except the ones we need)
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
+
+# Large media files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.pdf
+*.zip
+*.tar
+*.gz
+
+# Don't ignore package files
+!package.json
+!package-lock.json
