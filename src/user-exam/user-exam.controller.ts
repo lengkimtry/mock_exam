@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Delete } from '@nestjs/common';
 import { UserExamService } from './user-exam.service';
 import { ExerciseService } from '../exercise/exercise.service'; // Import ExerciseService
 
@@ -40,5 +40,65 @@ export class UserExamController {
 
     // Start the mock exam with the fetched exercises
     return this.userExamService.startMockExam(body.userId, exercises);
+  }
+
+  @Get('history/:userId')
+  async getExamHistory(@Param('userId') userId: string) {
+    return this.userExamService.getExamHistory(userId);
+  }
+
+  @Get('result/:userExamId')
+  async getExamResult(@Param('userExamId') userExamId: string) {
+    return this.userExamService.getExamResult(userExamId);
+  }
+
+  @Post('submit-results')
+  async submitExamResults(@Body() resultsData: {
+    userId: string;
+    examId: string;
+    subjectName: string;
+    universityName: string;
+    totalQuestions: number;
+    answeredQuestions: number;
+    correctAnswers: number;
+    score: number;
+    timeSpent: number;
+    questionResults: any[];
+    completedAt: string;
+  }) {
+    console.log('Submitting exam results:', resultsData);
+    
+    try {
+      const userExam = await this.userExamService.submitExamResults(resultsData);
+      return userExam;
+    } catch (error) {
+      console.error('Error submitting exam results:', error);
+      throw new Error('Failed to submit exam results');
+    }
+  }
+
+  @Delete('delete/:examId')
+  async deleteExamHistory(@Param('examId') examId: string) {
+    console.log(`Deleting exam history: ${examId}`);
+    
+    try {
+      const deletedExam = await this.userExamService.deleteExamHistory(examId);
+      if (!deletedExam) {
+        throw new Error('Exam history not found');
+      }
+      
+      console.log('Exam history deleted successfully');
+      return { 
+        message: 'Exam history deleted successfully', 
+        deletedExam: {
+          id: deletedExam._id,
+          subjectName: deletedExam.subjectName,
+          score: deletedExam.score
+        }
+      };
+    } catch (error) {
+      console.error('Error deleting exam history:', error);
+      throw new Error('Failed to delete exam history');
+    }
   }
 }

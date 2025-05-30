@@ -4,6 +4,7 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity("users")
 export class User {
+    [x: string]: any;
     save() {
       throw new Error('Method not implemented.');
     }
